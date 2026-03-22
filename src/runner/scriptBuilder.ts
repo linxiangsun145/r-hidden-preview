@@ -1,0 +1,110 @@
+import * as path from "node:path";
+import { createTempDir, writeUtf8File } from "../util/tempFiles";
+
+export interface BuiltScriptFiles {
+  tempDir: string;
+  runnerScriptPath: string;
+  payloadPath: string;
+}
+
+export async function buildExecutionScripts(fullCode: string): Promise<BuiltScriptFiles> {
+  const tempDir = await createTempDir();
+  const payloadPath = path.join(tempDir, "payload.R");
+  const runnerScriptPath = path.join(tempDir, "runner.R");
+
+  await writeUtf8File(payloadPath, fullCode);
+  await writeUtf8File(runnerScriptPath, buildRunnerScript());
+
+  return {
+    tempDir,
+    runnerScriptPath,
+    payloadPath
+  };
+}
+
+function buildRunnerScript(): string {
+  return [
+    "args <- commandArgs(trailingOnly = TRUE)",
+    "payloadPath <- args[[1]]",
+    "maxLen <- as.integer(args[[2]])",
+    "plotPath <- file.path(dirname(payloadPath), 'preview_plot.png')",
+    "",
+    "truncate_text <- function(x, n) {",
+    "  if (is.na(n) || n <= 0) return(x)",
+    "  if (nchar(x, type = 'bytes') <= n) return(x)",
+    "  paste0(substr(x, 1, n), '...[truncated]')",
+    "}",
+    "",
+    "emit <- function(kind, summary, detail, plot_file = '') {",
+    "  cat('<<RPREVIEW_KIND>>', kind, '\\n', sep = '')",
+    "  cat('<<RPREVIEW_SUMMARY>>\\n', summary, '\\n<<RPREVIEW_SUMMARY_END>>\\n', sep = '')",
+    "  cat('<<RPREVIEW_DETAIL>>\\n', detail, '\\n<<RPREVIEW_DETAIL_END>>\\n', sep = '')",
+    "  cat('<<RPREVIEW_PLOT>>\\n', plot_file, '\\n<<RPREVIEW_PLOT_END>>\\n', sep = '')",
+    "}",
+    "",
+    "safe_read <- function(file_path) {",
+    "  lines <- readLines(file_path, warn = FALSE, encoding = 'UTF-8')",
+    "  paste(lines, collapse = '\\n')",
+    "}",
+    "",
+    "code <- safe_read(payloadPath)",
+    "",
+    "tryCatch({",
+    "  if (file.exists(plotPath)) unlink(plotPath)",
+    "  oldDevice <- getOption('device')",
+    "  options(device = function(...) grDevices::png(filename = plotPath, width = 960, height = 600))",
+    "  on.exit(options(device = oldDevice), add = TRUE)",
+    "",
+    "  exprs <- parse(text = code)",
+    "  if (length(exprs) == 0) {",
+    "    emit('text', '(empty)', 'No expression to evaluate.', '')",
+    "    quit(save = 'no', status = 0)",
+    "  }",
+    "",
+    "  last_value <- NULL",
+    "  warning_buffer <- character()",
+    "",
+    "  output_lines <- withCallingHandlers(",
+    "    capture.output({",
+    "      for (expr in exprs) {",
+    "        last_value <- eval(expr, envir = .GlobalEnv)",
+    "      }",
+    "      if (!is.null(last_value)) {",
+    "        print(last_value)",
+    "      }",
+    "    }, type = 'output'),",
+    "    warning = function(w) {",
+    "      warning_buffer <<- c(warning_buffer, paste0('Warning: ', conditionMessage(w)))",
+    "      invokeRestart('muffleWarning')",
+    "    }",
+    "  )",
+    "",
+    "  detail_lines <- c(warning_buffer, output_lines)",
+    "  if (length(detail_lines) == 0) {",
+    "    detail_lines <- c('(no textual output)')",
+    "  }",
+    "",
+    "  detail <- paste(detail_lines, collapse = '\\n')",
+    "  summary <- strsplit(detail, '\\n', fixed = TRUE)[[1]][1]",
+    "",
+    "  while (!is.null(grDevices::dev.list())) {",
+    "    grDevices::dev.off()",
+    "  }",
+    "",
+    "  emittedPlot <- ''",
+    "  if (file.exists(plotPath)) {",
+    "    fileSize <- file.info(plotPath)$size",
+    "    if (!is.na(fileSize) && fileSize > 0) {",
+    "      emittedPlot <- plotPath",
+    "    }",
+    "  }",
+    "",
+    "  emit('text', truncate_text(summary, maxLen), truncate_text(detail, maxLen), emittedPlot)",
+    "}, error = function(e) {",
+    "  error_message <- paste0('Error: ', conditionMessage(e))",
+    "  emit('error', truncate_text(error_message, maxLen), truncate_text(error_message, maxLen), '')",
+    "  quit(save = 'no', status = 1)",
+    "})",
+    ""
+  ].join("\n");
+}

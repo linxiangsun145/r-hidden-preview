@@ -1,0 +1,111 @@
+{
+  "name": "r-hidden-preview",
+  "displayName": "R Hidden Preview",
+  "description": "Automatically run selected R code in the background and preview results inline and in a panel.",
+  "version": "0.1.0",
+  "publisher": "your-publisher",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Other"
+  ],
+  "keywords": [
+    "R",
+    "preview",
+    "Rscript",
+    "selection"
+  ],
+  "activationEvents": [
+    "onLanguage:r",
+    "onCommand:rHiddenPreview.openPreviewPanel",
+    "onCommand:rHiddenPreview.showOutput"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "rHiddenPreview.openPreviewPanel",
+        "title": "R Hidden Preview: Open Preview Panel"
+      },
+      {
+        "command": "rHiddenPreview.showOutput",
+        "title": "R Hidden Preview: Show Output"
+      }
+    ],
+    "configuration": {
+      "title": "R Hidden Preview",
+      "properties": {
+        "rHiddenPreview.rscriptPath": {
+          "type": "string",
+          "default": "Rscript",
+          "description": "Path to Rscript executable. You can use a full path if Rscript is not in PATH."
+        },
+        "rHiddenPreview.timeoutMs": {
+          "type": "number",
+          "default": 3000,
+          "minimum": 300,
+          "description": "Timeout in milliseconds for each background preview execution."
+        },
+        "rHiddenPreview.debounceMs": {
+          "type": "number",
+          "default": 350,
+          "minimum": 50,
+          "description": "Debounce delay in milliseconds before triggering preview after selection changes."
+        },
+        "rHiddenPreview.autoPreview": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable automatic preview on selection changes."
+        },
+        "rHiddenPreview.contextMode": {
+          "type": "string",
+          "default": "documentBeforeSelection",
+          "enum": [
+            "selectionOnly",
+            "documentBeforeSelection"
+          ],
+          "markdownDescription": "Execution context mode. `selectionOnly`: run only selected code. `documentBeforeSelection`: run code from document start to selection start, then run selected code. This can execute extra code and may cause side effects."
+        },
+        "rHiddenPreview.maxOutputLength": {
+          "type": "number",
+          "default": 2000,
+          "minimum": 100,
+          "description": "Maximum output length for summary and detail text. Extra output is truncated."
+        },
+        "rHiddenPreview.showInlinePreview": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show one-line summary as inline end-of-line preview decoration."
+        },
+        "rHiddenPreview.showPanelPreview": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show detailed preview in a dedicated detail view beside the editor."
+        },
+        "rHiddenPreview.requireWorkspaceTrust": {
+          "type": "boolean",
+          "default": true,
+          "description": "If enabled, auto preview runs only in trusted workspaces."
+        },
+        "rHiddenPreview.ignoreIncompleteSelection": {
+          "type": "boolean",
+          "default": true,
+          "description": "If enabled, skip execution when selection looks incomplete (for example unbalanced brackets or unfinished expression)."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.15",
+    "@types/vscode": "^1.90.0",
+    "typescript": "^5.5.4"
+  }
+}

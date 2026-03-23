@@ -21,6 +21,11 @@ This project is designed as a stable, maintainable first version suitable for Ma
 - Plot preview support:
   - Captures generated plot output as PNG
   - Renders image in Webview detail panel
+- data.frame preview support:
+  - Renders data.frame result as HTML table in the detail panel
+  - Scrollable table container for larger result sets
+  - Client-side pagination and per-column sorting
+  - Tibble-friendly headers with column type info
 - Missing package assistance:
   - Detects common "package not installed" errors
   - Prompts one-click `install.packages(...)`

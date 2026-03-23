@@ -24,6 +24,9 @@ This project is designed as a stable, maintainable first version suitable for Ma
 - Missing package assistance:
   - Detects common "package not installed" errors
   - Prompts one-click `install.packages(...)`
+- Safety rule engine for auto execution:
+  - Auto-run only for simple safe expressions
+  - Skip dangerous IO/system/package-management calls
 - Handles failure states with explicit feedback:
   - Rscript launch failure
   - execution error
@@ -91,6 +94,60 @@ Recommended practices:
 5. Open detailed panel via command:
    - `R Hidden Preview: Open Preview Panel`
 
+## Safe Auto-Execution Rules
+
+Auto preview now runs only when selected code passes `isSafeExpression(code)`.
+
+Default blocked function calls:
+
+- `read.csv(...)`
+- `read.table(...)`
+- `read.delim(...)`
+- `write.csv(...)`
+- `write.table(...)`
+- `install.packages(...)`
+- `system(...)`
+- `system2(...)`
+- `shell(...)`
+- `source(...)`
+- `download.file(...)`
+- `unlink(...)`
+- `file.remove(...)`
+- `file.copy(...)`
+- `save(...)`
+- `saveRDS(...)`
+- `load(...)`
+- `setwd(...)`
+
+Rule configuration:
+
+- blacklist: `rHiddenPreview.safeFunctionBlacklist`
+- whitelist: `rHiddenPreview.safeFunctionWhitelist`
+
+Whitelist behavior:
+
+- empty whitelist (default): allow all function calls except blacklist
+- non-empty whitelist: only allow listed function calls (blacklist still takes precedence)
+
+Examples that are auto-executed:
+
+```r
+1 + 2
+mean(x)
+sum(c(1,2,3))
+```
+
+Examples that are skipped:
+
+```r
+read.csv("data.csv")
+write.csv(df, "out.csv")
+install.packages("ggplot2")
+system("dir")
+```
+
+If an expression is skipped, the extension writes a `SKIP Unsafe expression` entry to the output channel.
+
 ## Screenshots
 
 Add screenshots before Marketplace publishing to improve trust and clarity:
@@ -116,6 +173,12 @@ All settings are under `rHiddenPreview`:
   - Debounce delay before triggering preview.
 - `autoPreview` (boolean, default: true)
   - Enable automatic preview on selection changes.
+- `safeAutoExecutionOnly` (boolean, default: true)
+  - If enabled, only auto-run code passing `isSafeExpression(code)`. Disable this to allow auto-preview for all complete selections.
+- `safeFunctionBlacklist` (string[], default: built-in dangerous function list)
+  - Function names blocked by safety rule engine (case-insensitive).
+- `safeFunctionWhitelist` (string[], default: `[]`)
+  - Optional allowed function names. If non-empty, only listed functions are auto-executed.
 - `contextMode` (enum, default: `documentBeforeSelection`)
   - `selectionOnly` or `documentBeforeSelection`.
 - `maxOutputLength` (number, default: 2000)

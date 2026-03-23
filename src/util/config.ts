@@ -6,6 +6,9 @@ export interface ExtensionConfig {
   timeoutMs: number;
   debounceMs: number;
   autoPreview: boolean;
+  safeAutoExecutionOnly: boolean;
+  safeFunctionBlacklist: string[];
+  safeFunctionWhitelist: string[];
   contextMode: ContextMode;
   maxOutputLength: number;
   showInlinePreview: boolean;
@@ -31,6 +34,32 @@ export function getConfig(): ExtensionConfig {
   const timeoutMs = clampNumber(config.get<number>("timeoutMs", 3000), 300, 120000);
   const debounceMs = clampNumber(config.get<number>("debounceMs", 350), 50, 10000);
   const autoPreview = config.get<boolean>("autoPreview", true);
+  const safeAutoExecutionOnly = config.get<boolean>("safeAutoExecutionOnly", true);
+  const safeFunctionBlacklist = normalizeStringList(
+    config.get<string[]>("safeFunctionBlacklist", [
+      "read.csv",
+      "read.table",
+      "read.delim",
+      "write.csv",
+      "write.table",
+      "install.packages",
+      "system",
+      "system2",
+      "shell",
+      "source",
+      "download.file",
+      "unlink",
+      "file.remove",
+      "file.copy",
+      "save",
+      "saveRDS",
+      "load",
+      "setwd"
+    ])
+  );
+  const safeFunctionWhitelist = normalizeStringList(
+    config.get<string[]>("safeFunctionWhitelist", [])
+  );
   const contextModeValue = config.get<string>("contextMode", "documentBeforeSelection");
   const contextMode: ContextMode =
     contextModeValue === "selectionOnly" ? "selectionOnly" : "documentBeforeSelection";
@@ -45,6 +74,9 @@ export function getConfig(): ExtensionConfig {
     timeoutMs,
     debounceMs,
     autoPreview,
+    safeAutoExecutionOnly,
+    safeFunctionBlacklist,
+    safeFunctionWhitelist,
     contextMode,
     maxOutputLength,
     showInlinePreview,
@@ -59,6 +91,9 @@ export function getConfig(): ExtensionConfig {
       rscriptPath,
       timeoutMs,
       debounceMs,
+      safeAutoExecutionOnly,
+      safeFunctionBlacklist,
+      safeFunctionWhitelist,
       contextMode
     });
   }
@@ -68,6 +103,9 @@ export function getConfig(): ExtensionConfig {
     timeoutMs,
     debounceMs,
     autoPreview,
+    safeAutoExecutionOnly,
+    safeFunctionBlacklist,
+    safeFunctionWhitelist,
     contextMode,
     maxOutputLength,
     showInlinePreview,
@@ -75,6 +113,12 @@ export function getConfig(): ExtensionConfig {
     requireWorkspaceTrust,
     ignoreIncompleteSelection
   };
+}
+
+function normalizeStringList(value: string[]): string[] {
+  return value
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
 }
 
 function clampNumber(value: number, min: number, max: number): number {

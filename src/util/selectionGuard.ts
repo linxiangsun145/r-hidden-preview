@@ -2,6 +2,32 @@ import { SelectionCheck } from "../types";
 
 const TRAILING_OPERATOR_PATTERN = /(?:[+\-*/^<>=~,&|:$@]|%%|%\/%|\|>|%>%|<-|=)\s*$/;
 
+export interface SafeExpressionRules {
+  denyFunctions?: string[];
+  allowFunctions?: string[];
+}
+
+export const DEFAULT_DENY_FUNCTIONS = [
+  "read.csv",
+  "read.table",
+  "read.delim",
+  "write.csv",
+  "write.table",
+  "install.packages",
+  "system",
+  "system2",
+  "shell",
+  "source",
+  "download.file",
+  "unlink",
+  "file.remove",
+  "file.copy",
+  "save",
+  "saveRDS",
+  "load",
+  "setwd"
+];
+
 export function checkSelectionCompleteness(selectionText: string): SelectionCheck {
   if (selectionText.length === 0) {
     return { ok: false, shouldSkip: true, reason: "Selection is empty." };
@@ -42,6 +68,32 @@ export function checkSelectionCompleteness(selectionText: string): SelectionChec
   }
 
   return { ok: true, shouldSkip: false };
+}
+
+export function isSafeExpression(code: string, rules?: SafeExpressionRules): boolean {
+  const normalized = stripComments(code).trim();
+  if (normalized.length === 0) {
+    return false;
+  }
+
+  const denySet = normalizeFunctionSet(rules?.denyFunctions ?? DEFAULT_DENY_FUNCTIONS);
+  const allowSet = normalizeFunctionSet(rules?.allowFunctions ?? []);
+  const hasAllowList = allowSet.size > 0;
+
+  const functionNames = extractFunctionNames(normalized);
+  for (const name of functionNames) {
+    const key = name.toLowerCase();
+
+    if (denySet.has(key)) {
+      return false;
+    }
+
+    if (hasAllowList && !allowSet.has(key)) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 function isCommentOnly(text: string): boolean {
@@ -130,4 +182,34 @@ function looksLikeIncompleteExpression(trimmed: string): boolean {
   }
 
   return false;
+}
+
+function stripComments(text: string): string {
+  return text
+    .split(/\r?\n/)
+    .map((line) => {
+      const idx = line.indexOf("#");
+      return idx >= 0 ? line.slice(0, idx) : line;
+    })
+    .join("\n");
+}
+
+function extractFunctionNames(expr: string): string[] {
+  const names: string[] = [];
+  const regex = /([A-Za-z.][A-Za-z0-9._]*)\s*(?=\()/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(expr)) !== null) {
+    names.push(match[1]);
+  }
+
+  return names;
+}
+
+function normalizeFunctionSet(input: string[]): Set<string> {
+  return new Set(
+    input
+      .map((name) => name.trim().toLowerCase())
+      .filter((name) => name.length > 0)
+  );
 }

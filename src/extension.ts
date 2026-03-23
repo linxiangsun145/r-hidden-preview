@@ -3,7 +3,7 @@ import { spawn } from "node:child_process";
 import { RRunner, RunningPreviewTask } from "./runner/rRunner";
 import { getConfig } from "./util/config";
 import { createDebouncedExecutor } from "./util/debounce";
-import { checkSelectionCompleteness } from "./util/selectionGuard";
+import { checkSelectionCompleteness, isSafeExpression } from "./util/selectionGuard";
 import { InlinePreviewDecorations } from "./ui/decorations";
 import { PreviewPanel } from "./ui/previewPanel";
 import { PreviewResult } from "./types";
@@ -118,6 +118,25 @@ export function activate(context: vscode.ExtensionContext): void {
 
 			const reason = selectionCheck.reason ?? "Selection appears incomplete.";
 			publishResult(editor, { kind: "error", summary: reason, detail: reason });
+			return;
+		}
+
+		if (
+			config.safeAutoExecutionOnly &&
+			!isSafeExpression(selectedText, {
+				denyFunctions: config.safeFunctionBlacklist,
+				allowFunctions: config.safeFunctionWhitelist
+			})
+		) {
+			cancelRunningTask();
+			statusItem.text = "R Hidden Preview: Skipped unsafe expression";
+			vscode.window.setStatusBarMessage(
+				"[R Hidden Preview] Skipped unsafe expression for auto preview. Disable rHiddenPreview.safeAutoExecutionOnly to allow.",
+				3000
+			);
+			outputChannel.appendLine(`[${new Date().toLocaleTimeString()}] SKIP Unsafe expression`);
+			outputChannel.appendLine(selectedText.trim() || "(empty)");
+			outputChannel.appendLine("");
 			return;
 		}
 

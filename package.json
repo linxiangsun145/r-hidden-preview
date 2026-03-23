@@ -68,6 +68,46 @@
           "default": true,
           "description": "Enable automatic preview on selection changes."
         },
+        "rHiddenPreview.safeAutoExecutionOnly": {
+          "type": "boolean",
+          "default": true,
+          "description": "If enabled, auto preview only runs for expressions passing the built-in safe rule engine (isSafeExpression)."
+        },
+        "rHiddenPreview.safeFunctionBlacklist": {
+          "type": "array",
+          "default": [
+            "read.csv",
+            "read.table",
+            "read.delim",
+            "write.csv",
+            "write.table",
+            "install.packages",
+            "system",
+            "system2",
+            "shell",
+            "source",
+            "download.file",
+            "unlink",
+            "file.remove",
+            "file.copy",
+            "save",
+            "saveRDS",
+            "load",
+            "setwd"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "description": "Function call blacklist used by safe auto execution (case-insensitive). Any matched function call will be skipped."
+        },
+        "rHiddenPreview.safeFunctionWhitelist": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "description": "Optional function call whitelist for safe auto execution (case-insensitive). When non-empty, only listed function calls are allowed."
+        },
         "rHiddenPreview.contextMode": {
           "type": "string",
           "default": "documentBeforeSelection",

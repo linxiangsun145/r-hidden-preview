@@ -68,6 +68,11 @@
           "default": true,
           "description": "Enable automatic preview on selection changes."
         },
+        "rHiddenPreview.enableHoverPreview": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable optional hover preview. When enabled, hovering R expressions shows quick preview like IntelliSense."
+        },
         "rHiddenPreview.safeAutoExecutionOnly": {
           "type": "boolean",
           "default": true,

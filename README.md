@@ -32,6 +32,9 @@ This project is designed as a stable, maintainable first version suitable for Ma
 - Result cache:
   - Reuses preview result for identical `hash(code + context)`
   - Avoids duplicate execution for same expression/context
+- Optional hover preview mode:
+  - Show quick preview on mouse hover (IntelliSense-like)
+  - Uses the same safe rule and cache pipeline
 - Safety rule engine for auto execution:
   - Auto-run only for simple safe expressions
   - Skip dangerous IO/system/package-management calls
@@ -181,6 +184,8 @@ All settings are under `rHiddenPreview`:
   - Debounce delay before triggering preview.
 - `autoPreview` (boolean, default: true)
   - Enable automatic preview on selection changes.
+- `enableHoverPreview` (boolean, default: false)
+  - Enable optional hover-based quick preview.
 - `safeAutoExecutionOnly` (boolean, default: true)
   - If enabled, only auto-run code passing `isSafeExpression(code)`. Disable this to allow auto-preview for all complete selections.
 - `safeFunctionBlacklist` (string[], default: built-in dangerous function list)

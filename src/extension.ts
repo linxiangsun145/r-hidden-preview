@@ -57,6 +57,81 @@ export function activate(context: vscode.ExtensionContext): void {
 		outputChannel.show(true);
 	});
 
+	const hoverProvider = vscode.languages.registerHoverProvider({ language: "r" }, {
+		provideHover: async (document, position) => {
+			const config = getConfig();
+			if (!config.enableHoverPreview) {
+				return undefined;
+			}
+
+			if (config.requireWorkspaceTrust && !vscode.workspace.isTrusted) {
+				return undefined;
+			}
+
+			const lineText = document.lineAt(position.line).text;
+			const hoverExpr = extractHoverExpression(lineText, position.character);
+			if (!hoverExpr) {
+				return undefined;
+			}
+
+			const completeness = checkSelectionCompleteness(hoverExpr);
+			if (!completeness.ok) {
+				return undefined;
+			}
+
+			if (
+				config.safeAutoExecutionOnly &&
+				!isSafeExpression(hoverExpr, {
+					denyFunctions: config.safeFunctionBlacklist,
+					allowFunctions: config.safeFunctionWhitelist
+				})
+			) {
+				return new vscode.Hover(new vscode.MarkdownString("**R Hidden Preview**\n\nBlocked by safe rule engine."));
+			}
+
+			const keyContext = `${document.uri.toString()}\nhover`;
+			const key = hashCodeContext(hoverExpr, keyContext);
+
+			let result = resultCache.get(key);
+			if (!result) {
+				let task = inFlightTasks.get(key);
+				if (!task) {
+					task = runner.run({
+						rscriptPath: config.rscriptPath,
+						fullCode: hoverExpr,
+						timeoutMs: config.timeoutMs,
+						maxOutputLength: config.maxOutputLength
+					});
+					inFlightTasks.set(key, task);
+				}
+
+				result = await task.promise;
+				if (inFlightTasks.get(key) === task) {
+					inFlightTasks.delete(key);
+				}
+
+				if (result.kind === "text") {
+					putCache(key, result);
+				}
+			}
+
+			const md = new vscode.MarkdownString(undefined, true);
+			md.appendMarkdown("**R Hidden Preview (Hover)**\n\n");
+			md.appendMarkdown(`- Status: ${result.kind === "error" ? "Error" : "OK"}\n`);
+			md.appendMarkdown(`- Summary: ${escapeMarkdown(result.summary)}\n\n`);
+
+			if (result.tablePreview) {
+				md.appendMarkdown(`Table: ${result.tablePreview.totalRows} rows x ${result.tablePreview.columns.length} cols\n\n`);
+			}
+
+			if (result.detail) {
+				md.appendCodeblock(result.detail, "r");
+			}
+
+			return new vscode.Hover(md);
+		}
+	});
+
 	const selectionListener = vscode.window.onDidChangeTextEditorSelection((event) => {
 		const config = getConfig();
 		debounced.updateWait(config.debounceMs);
@@ -80,6 +155,7 @@ export function activate(context: vscode.ExtensionContext): void {
 	context.subscriptions.push(
 		openPanelCommand,
 		showOutputCommand,
+		hoverProvider,
 		selectionListener,
 		configurationListener,
 		decorations,
@@ -408,6 +484,43 @@ function runRInstall(
 			});
 		});
 	});
+}
+
+function extractHoverExpression(lineText: string, cursor: number): string | undefined {
+	if (lineText.trim().length === 0) {
+		return undefined;
+	}
+
+	const commentIndex = lineText.indexOf("#");
+	if (commentIndex >= 0 && cursor >= commentIndex) {
+		return undefined;
+	}
+
+	const effective = commentIndex >= 0 ? lineText.slice(0, commentIndex) : lineText;
+	if (effective.trim().length === 0) {
+		return undefined;
+	}
+
+	let segmentStart = 0;
+	let segmentEnd = effective.length;
+	for (let i = 0; i < effective.length; i += 1) {
+		if (effective[i] !== ";") {
+			continue;
+		}
+		if (i < cursor) {
+			segmentStart = i + 1;
+		} else {
+			segmentEnd = i;
+			break;
+		}
+	}
+
+	const segment = effective.slice(segmentStart, segmentEnd).trim();
+	return segment.length > 0 ? segment : undefined;
+}
+
+function escapeMarkdown(value: string): string {
+	return value.replace(/[\\`*_{}[\]()#+\-.!|>]/g, "\\$&");
 }
 
 export function deactivate(): void {

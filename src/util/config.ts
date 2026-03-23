@@ -6,6 +6,7 @@ export interface ExtensionConfig {
   timeoutMs: number;
   debounceMs: number;
   autoPreview: boolean;
+  enableHoverPreview: boolean;
   safeAutoExecutionOnly: boolean;
   safeFunctionBlacklist: string[];
   safeFunctionWhitelist: string[];
@@ -34,6 +35,7 @@ export function getConfig(): ExtensionConfig {
   const timeoutMs = clampNumber(config.get<number>("timeoutMs", 3000), 300, 120000);
   const debounceMs = clampNumber(config.get<number>("debounceMs", 350), 50, 10000);
   const autoPreview = config.get<boolean>("autoPreview", true);
+  const enableHoverPreview = config.get<boolean>("enableHoverPreview", false);
   const safeAutoExecutionOnly = config.get<boolean>("safeAutoExecutionOnly", true);
   const safeFunctionBlacklist = normalizeStringList(
     config.get<string[]>("safeFunctionBlacklist", [
@@ -74,6 +76,7 @@ export function getConfig(): ExtensionConfig {
     timeoutMs,
     debounceMs,
     autoPreview,
+    enableHoverPreview,
     safeAutoExecutionOnly,
     safeFunctionBlacklist,
     safeFunctionWhitelist,
@@ -91,6 +94,7 @@ export function getConfig(): ExtensionConfig {
       rscriptPath,
       timeoutMs,
       debounceMs,
+      enableHoverPreview,
       safeAutoExecutionOnly,
       safeFunctionBlacklist,
       safeFunctionWhitelist,
@@ -103,6 +107,7 @@ export function getConfig(): ExtensionConfig {
     timeoutMs,
     debounceMs,
     autoPreview,
+    enableHoverPreview,
     safeAutoExecutionOnly,
     safeFunctionBlacklist,
     safeFunctionWhitelist,

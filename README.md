@@ -32,6 +32,9 @@ This project is designed as a stable, maintainable first version suitable for Ma
 - Result cache:
   - Reuses preview result for identical `hash(code + context)`
   - Avoids duplicate execution for same expression/context
+- Execution de-duplication:
+  - During drag-selection bursts, repeated identical requests are skipped
+  - Only the final distinct request is executed
 - Optional hover preview mode:
   - Show quick preview on mouse hover (IntelliSense-like)
   - Uses the same safe rule and cache pipeline

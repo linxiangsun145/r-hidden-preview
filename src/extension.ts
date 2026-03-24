@@ -28,11 +28,14 @@ export function activate(context: vscode.ExtensionContext): void {
   const installingPackages = new Set<string>();
   const promptCooldownMs = 60_000;
 	const cacheMaxEntries = 200;
+	const executionDedupWindowMs = 1500;
 	const resultCache = new Map<string, PreviewResult>();
 	const inFlightTasks = new Map<string, RunningPreviewTask>();
   const debounced = createDebouncedExecutor(initialConfig.debounceMs);
 	let runningTask: RunningPreviewTask | undefined;
 	let runningTaskKey: string | undefined;
+	let lastExecutedKey: string | undefined;
+	let lastExecutedAt = 0;
 	let currentRequestId = 0;
 
 	const openPanelCommand = vscode.commands.registerCommand("rHiddenPreview.openPreviewPanel", () => {
@@ -224,6 +227,13 @@ export function activate(context: vscode.ExtensionContext): void {
 		const fullCode = buildCodeByContextMode(editor, selection, config.contextMode);
 		const targetLine = selection.end.line;
 		const executionKey = hashCodeContext(fullCode, `${editor.document.fileName}\n${config.contextMode}`);
+		const now = Date.now();
+
+		if (executionKey === lastExecutedKey && now - lastExecutedAt <= executionDedupWindowMs) {
+			statusItem.text = "R Hidden Preview: Dedup skipped";
+			vscode.window.setStatusBarMessage("[R Hidden Preview] Skipped duplicate execution.", 1500);
+			return;
+		}
 
 		const cached = resultCache.get(executionKey);
 		if (cached) {
@@ -260,6 +270,8 @@ export function activate(context: vscode.ExtensionContext): void {
 			maxOutputLength: config.maxOutputLength
 		});
 		runningTaskKey = executionKey;
+		lastExecutedKey = executionKey;
+		lastExecutedAt = now;
 		inFlightTasks.set(executionKey, runningTask);
 		statusItem.text = "R Hidden Preview: Running...";
 

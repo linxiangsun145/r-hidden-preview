@@ -78,6 +78,7 @@ export class PreviewPanel implements vscode.Disposable {
     const summary = normalizeInline(payload.result.summary);
     const hasPlot = Boolean(payload.result.plotPngBase64);
     const hasTable = Boolean(payload.result.tablePreview);
+    const hasVars = (payload.result.variables?.length ?? 0) > 0;
     const isError = payload.result.kind === "error";
     const statusText = isError ? "ERROR" : "SUCCESS";
     const statusClass = isError ? "status error" : "status success";
@@ -98,6 +99,9 @@ export class PreviewPanel implements vscode.Disposable {
           payload.result.tablePreview!.truncated
         )
       : "";
+    const varsSection = hasVars
+      ? renderVariablesSection(payload.result.variables ?? [])
+      : `<section class="section"><h2>Variables</h2><p class="table-note">No variables in .GlobalEnv</p></section>`;
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -269,6 +273,7 @@ export class PreviewPanel implements vscode.Disposable {
     <h2>Detail</h2>
     <pre>${escapeHtml(detail)}</pre>
   </section>
+  ${varsSection}
   ${tableSection}
   ${plotSection}
 </body>
@@ -485,4 +490,30 @@ function renderTableSection(
 
 function escapeForJsonScript(value: string): string {
   return value.replace(/<\//g, "<\\/").replace(/</g, "\\u003c");
+}
+
+function renderVariablesSection(variables: Array<{ name: string; type: string; size: string; preview: string }>): string {
+  const rows = variables
+    .map(
+      (v) =>
+        `<tr><td>${escapeHtml(v.name)}</td><td>${escapeHtml(v.type)}</td><td>${escapeHtml(v.size)}</td><td>${escapeHtml(v.preview)}</td></tr>`
+    )
+    .join("");
+
+  return `<section class="section">
+    <h2>Variables (Auto Refresh)</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Size</th>
+            <th>Preview</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  </section>`;
 }

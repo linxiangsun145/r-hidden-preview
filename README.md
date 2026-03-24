@@ -39,6 +39,9 @@ This project is designed as a stable, maintainable first version suitable for Ma
 - Optional hover preview mode:
   - Show quick preview on mouse hover (IntelliSense-like)
   - Uses the same safe rule and cache pipeline
+- Real-time variable system (RStudio-like):
+  - Show `.GlobalEnv` variables with name/type/size/preview
+  - Auto refresh after each execution
 - Safety rule engine for auto execution:
   - Auto-run only for simple safe expressions
   - Skip dangerous IO/system/package-management calls

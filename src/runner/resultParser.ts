@@ -1,4 +1,4 @@
-import { PreviewResult, TablePreview } from "../types";
+import { PreviewResult, TablePreview, VariablePreviewItem } from "../types";
 
 const KIND_TOKEN = "<<RPREVIEW_KIND>>";
 const SUMMARY_BEGIN = "<<RPREVIEW_SUMMARY>>";
@@ -14,6 +14,8 @@ const TABLE_TYPES_END = "<<RPREVIEW_TABLE_TYPES_END>>";
 const TABLE_TOTAL_ROWS_TOKEN = "<<RPREVIEW_TABLE_TOTAL_ROWS>>";
 const TABLE_IS_TIBBLE_TOKEN = "<<RPREVIEW_TABLE_IS_TIBBLE>>";
 const TABLE_TRUNCATED_TOKEN = "<<RPREVIEW_TABLE_TRUNCATED>>";
+const VARS_TSV_BEGIN = "<<RPREVIEW_VARS_TSV>>";
+const VARS_TSV_END = "<<RPREVIEW_VARS_TSV_END>>";
 
 export interface ParsedPreviewResult {
   result: PreviewResult;
@@ -31,6 +33,7 @@ export function parsePreviewResult(stdout: string, stderr: string, fallbackMaxLe
   const totalRows = Number.parseInt(totalRowsRaw, 10);
   const isTibble = (extractLineValue(stdout, TABLE_IS_TIBBLE_TOKEN) || "false").toLowerCase() === "true";
   const tableTruncated = (extractLineValue(stdout, TABLE_TRUNCATED_TOKEN) || "false").toLowerCase() === "true";
+  const varsTsv = extractBlock(stdout, VARS_TSV_BEGIN, VARS_TSV_END);
   const tablePreview = parseTablePreview(
     tableTsv,
     tableTypesTsv,
@@ -38,6 +41,7 @@ export function parsePreviewResult(stdout: string, stderr: string, fallbackMaxLe
     isTibble,
     tableTruncated
   );
+  const variables = parseVariablesPreview(varsTsv);
 
   if (kind === "text" || kind === "error") {
     const computedSummary = cleanupSummaryLine(pickSummary(summary, detail, kind));
@@ -48,7 +52,8 @@ export function parsePreviewResult(stdout: string, stderr: string, fallbackMaxLe
         kind,
         summary: truncate(computedSummary, fallbackMaxLength),
         detail: truncate(computedDetail, fallbackMaxLength),
-        tablePreview
+        tablePreview,
+        variables
       },
       plotFilePath
     };
@@ -74,6 +79,22 @@ export function parsePreviewResult(stdout: string, stderr: string, fallbackMaxLe
       detail: truncate(stdout.trim() || unknown, fallbackMaxLength)
     }
   };
+}
+
+function parseVariablesPreview(tsv: string | undefined): VariablePreviewItem[] {
+  if (!tsv) {
+    return [];
+  }
+
+  return tsv
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .map((line) => {
+      const [name = "", type = "", size = "", preview = ""] = line.split("\t");
+      return { name, type, size, preview };
+    })
+    .filter((item) => item.name.length > 0);
 }
 
 function parseTablePreview(

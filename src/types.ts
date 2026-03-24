@@ -7,11 +7,19 @@ export interface TablePreview {
   truncated: boolean;
 }
 
+export interface VariablePreviewItem {
+  name: string;
+  type: string;
+  size: string;
+  preview: string;
+}
+
 interface PreviewResultBase {
   summary: string;
   detail?: string;
   plotPngBase64?: string;
   tablePreview?: TablePreview;
+  variables?: VariablePreviewItem[];
 }
 
 export type PreviewResult =

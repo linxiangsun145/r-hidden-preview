@@ -1,422 +1,517 @@
 # R Instant Preview
 
-**Instantly execute and preview selected R code with one selection!**
+> **Select R code → See results instantly in VS Code**  
+> No clicking "Run". No waiting. Just real-time interactive R development like Jupyter or RStudio, but without leaving your editor.
 
-R Instant Preview is a powerful VS Code extension that automatically runs selected R code and shows immediate preview results inline and in a dedicated panel. No clicking "Run" button—just select code and see results instantly.
+R Instant Preview transforms VS Code into an interactive R environment by instantly executing selected code and displaying results inline and in a detailed preview panel. It's perfect for data exploration, teaching, exploratory analysis, and rapid prototyping.
 
-## What Does It Do?
+---
 
-When you select code in an `.R` file, the extension will:
+## 🚀 Key Features
 
-- ✨ Execute in background instantly with `Rscript --vanilla`
-- 📍 Show a one-line inline summary at the end of your line
-- 📊 Display detailed results in a dedicated preview panel
-- 🎨 Render plots as PNG images when code creates visualizations
-- 🧠 Intelligently track variable dependencies with smart context (optional)
-- ♻️ Cache results to avoid re-running identical expressions
+| Feature | Benefit |
+|---------|---------|
+| **Auto-Execute on Select** | No run button clicks—just select code and see output |
+| **Inline Results** | One-line summary at the end of your selection for quick previews |
+| **Detail Panel** | Full results, plots, and data frames in a rich webview |
+| **Plot Rendering** | Generated plots display as PNG images automatically |
+| **Data Frame Tables** | View data.frame and tibble results as scrollable HTML tables |
+| **Smart Context** | Intelligently infers upstream variable dependencies (no manual setup needed) |
+| **Long-Lived R Session** | Single persistent R session across multiple executions (faster, preserves state) |
+| **Incremental Execution** | Only re-runs changed code blocks (not the entire script) |
+| **Safety Rules** | Blocks dangerous functions by default (read/write files, system calls, package installs) |
+| **Real-Time Variables** | View `.GlobalEnv` variables with types and preview like RStudio |
+| **Missing Package Detection** | Auto-detects and prompts one-click installation of missing packages |
+| **Multi-Modal Results** | Text, plots, tables, and errors—all rendered beautifully |
 
-Perfect for interactive R development, data exploration, and teaching!
+---
 
-## Requirements
+## 📺 Quick Demo
 
-- **VS Code** 1.80.0 or newer
-- **R** 3.5.0 or newer (installed on your machine)
-- **Rscript** available in PATH (check: `which Rscript` or `where Rscript`)
-
-If `Rscript` is not in PATH, configure the full path:
-```json
-"rHiddenPreview.rscriptPath": "/usr/local/bin/Rscript"  // macOS example
+### Inline Preview
+```r
+# Just select this line, results appear at the end instantly:
+mean(c(1, 2, 3, 4, 5))  # → [1] 3
 ```
 
-## Core Features
-
-- Only active on R files.
-- Automatic trigger on selection change (no manual Run click required).
-- Hidden asynchronous execution using `child_process.spawn()`.
-- Long-lived R session runtime (single persistent R process for repeated previews).
-- Two-layer result UI:
-  - Inline summary (`TextEditorDecorationType`)
-  - Detailed panel (`WebviewPanel`)
-- Plot preview support:
-  - Captures generated plot output as PNG
-  - Renders image in Webview detail panel
-- data.frame preview support:
-  - Renders data.frame result as HTML table in the detail panel
-  - Scrollable table container for larger result sets
-  - Client-side pagination and per-column sorting
-  - Tibble-friendly headers with column type info
-- Missing package assistance:
-  - Detects common "package not installed" errors
-  - Prompts one-click `install.packages(...)`
-- Result cache:
-  - Reuses preview result for identical `hash(code + context)`
-  - Avoids duplicate execution for same expression/context
-- Execution de-duplication:
-  - During drag-selection bursts, repeated identical requests are skipped
-  - Only the final distinct request is executed
-- Optional hover preview mode:
-  - Show quick preview on mouse hover (IntelliSense-like)
-  - Uses the same safe rule and cache pipeline
-- Real-time variable system (RStudio-like):
-  - Show `.GlobalEnv` variables with name/type/size/preview
-  - Auto refresh after each execution
-- Safety rule engine for auto execution:
-  - Auto-run only for simple safe expressions
-  - Skip dangerous IO/system/package-management calls
-- Handles failure states with explicit feedback:
-  - Rscript launch failure
-  - execution error
-  - timeout (`预览超时`)
-- Debounce to avoid excessive execution while adjusting selection.
-- Cancels previous unfinished preview task when new selection arrives.
-- Output truncation to keep UI responsive.
-- Configurable behavior via settings.
-
-## How It Works
-
-1. Listen to editor selection changes.
-2. Verify active editor language is R.
-3. Run lightweight selection completeness checks before execution.
-4. Build execution code based on context mode:
-   - `selectionOnly`
-   - `documentBeforeSelection` (default)
-  - `smartContext` (minimal dependency mode)
-5. Create temporary files:
-   - payload R code
-   - runner R script wrapper
-6. Spawn hidden process:
-   - `Rscript --vanilla <runner.R> <payload.R> <maxOutputLength>`
-7. Parse structured stdout markers into `PreviewResult`.
-8. Update inline summary and panel detail.
-9. Clean up temporary files and process resources.
-
-## Execution Context Modes
-
-### `selectionOnly`
-Only executes currently selected code.
-
-### `documentBeforeSelection` (default)
-Executes code from start of document to selection start, then selected code.
-
-### `smartContext`
-Analyzes the selected expression and recursively finds the minimal upstream assignments it depends on.
-
-Runtime validation behavior:
-
-- First run: minimal dependency chain from static analysis.
-- Validation: execute in long-lived R session.
-- Fallback: if execution fails (for example missing object), automatically retry with wider `documentBeforeSelection` context.
-
-Incremental execution behavior:
-
-- Uses long-lived R session state as runtime cache.
-- Splits context into logical code blocks.
-- Hashes each block and tracks block-level variable dependencies.
-- Marks dirty blocks when content or dependency shape changes.
-- Executes only dirty blocks plus affected downstream blocks (instead of re-running all context).
-
-Example:
-
+### Plot Visualization
 ```r
-x <- 1:5
+# Select code that makes plots—they render in the preview panel:
+x <- seq(0, 2*pi, 0.1)
+plot(x, sin(x), type="l")     # → Plot appears in panel
+```
+
+### Data Frames & Tables
+```r
+# Select data.frame operations—view results as interactive tables:
+df <- data.frame(x = 1:5, y = letters[1:5])
+subset(df, x > 2)             # → Table displayed in panel
+```
+
+### Smart Context (Minimal Dependencies)
+```r
+x <- 1:10
 y <- x * 2
-z <- y + 10
-mean(z)
+z <- y + 5
+mean(z)                        # → Only includes z, y, x assignments
+                               # (skips unrelated code automatically)
 ```
 
-When selecting `mean(z)`, smart context will include `z <- y + 10`, `y <- x * 2`, and `x <- 1:5`, but skip unrelated earlier statements.
+---
 
-Important:
-- This mode may execute additional code and can cause side effects.
-- Side effects depend on your selected script content.
+## 🎯 Who Should Use This?
 
-## Safety and Side Effects
+- **Data Scientists & Analysts** – Explore data and test hypotheses interactively
+- **Students & Educators** – Teach R with instant visual feedback
+- **Notebook Enthusiasts** – Want Jupyter-style experience in VS Code
+- **RStudio Users Migrating to VS Code** – Familiar real-time workflow
+- **Statisticians** – Quick validation of calculations and models
 
-This extension executes R code in the background.
+---
 
-Please read carefully:
-- Selected code is executed automatically when selection changes.
-- In `documentBeforeSelection` mode, code before selection is also executed.
-- In `smartContext` mode, only inferred dependency assignments are prepended to selection.
-- Any executed code may have side effects (file operations, network calls, state mutation, etc.).
+## ⚡ Getting Started
 
-Recommended practices:
-- Use trusted workspaces.
-- Keep `requireWorkspaceTrust` enabled for safer default behavior.
-- Use `selectionOnly` for stricter execution boundaries.
+### Requirements
+- **VS Code** 1.80.0 or newer
+- **R** 3.5.0 or newer
+- **Rscript** in PATH (macOS/Linux) or auto-detected (Windows)
 
-## How to Use
+### Installation & Setup
 
-1. **Open an R file** (`.R` extension)
-2. **Select the code** you want to preview with your mouse or keyboard
-3. **Wait 350ms** for the debounce (or press Enter to execute immediately)
-4. **See inline result** at the end of your selected line
-5. **Open details panel** with command: `R Instant Preview: Open Preview Panel`
+1. **Install the Extension**  
+   Open VS Code and search for "R Instant Preview" in Extensions (or click install from Marketplace)
 
-### Example
+2. **Verify R Installation**
+   ```bash
+   # Check R is accessible:
+   which Rscript     # macOS/Linux
+   where Rscript     # Windows
+   
+   # Check R version:
+   R --version
+   ```
 
-```r
-# Select these lines one by one and see results instantly:
-x <- c(1, 2, 3, 4, 5)
-mean(x)           # Result: [1] 3
-sd(x)             # Result: [1] 1.581139
-plot(x)           # Shows plot in panel
+3. **Configure (Optional)**  
+   If `Rscript` is not in PATH, set it in VS Code settings:
+   ```json
+   {
+     "rHiddenPreview.rscriptPath": "/usr/local/bin/Rscript"
+   }
+   ```
+
+4. **Open an R File**  
+   Create or open any `.R` file and start selecting code!
+
+### Basic Workflow
+
+```
+1. Open .R file
+2. Select any code (mouse or keyboard)
+3. Wait ~350ms debounce
+4. Results appear inline + in preview panel
+5. Open full panel: Ctrl+Shift+P → "R Instant Preview: Open Preview Panel"
 ```
 
-## Quick Start Checklist
+---
 
-Before using, ensure:
+## 🧠 Execution Context Modes
 
-- ✅ R is installed (`R --version` in terminal)
-- ✅ `Rscript` is in PATH (or configure full path in settings)
-- ✅ Workspace is trusted (required by default)
+The extension supports three execution strategies:
 
-## Requirements
-
-## Safe Auto-Execution Rules
-
-Auto preview now runs only when selected code passes `isSafeExpression(code)`.
-
-Default blocked function calls:
-
-- `read.csv(...)`
-- `read.table(...)`
-- `read.delim(...)`
-- `write.csv(...)`
-- `write.table(...)`
-- `install.packages(...)`
-- `system(...)`
-- `system2(...)`
-- `shell(...)`
-- `source(...)`
-- `download.file(...)`
-- `unlink(...)`
-- `file.remove(...)`
-- `file.copy(...)`
-- `save(...)`
-- `saveRDS(...)`
-- `load(...)`
-- `setwd(...)`
-
-Rule configuration:
-
-- blacklist: `rHiddenPreview.safeFunctionBlacklist`
-- whitelist: `rHiddenPreview.safeFunctionWhitelist`
-
-Whitelist behavior:
-
-- empty whitelist (default): allow all function calls except blacklist
-- non-empty whitelist: only allow listed function calls (blacklist still takes precedence)
-
-Examples that are auto-executed:
+### 1. **Selection Only** (Strictest)
+```json
+"rHiddenPreview.contextMode": "selectionOnly"
+```
+Runs *only* the selected code, nothing else. Best for safety.
 
 ```r
-1 + 2
+# Setup code (won't execute)
+x <- 1:10
+
+# Select only this:
+mean(x)  # ✅ Executes, but x is undefined → error
+
+# Lesson: Use selectionOnly when you want minimal side effects
+```
+
+### 2. **Document Before Selection** (Default / Balanced)
+```json
+"rHiddenPreview.contextMode": "documentBeforeSelection"
+```
+Runs all code from file start → selection start, then selected code. Most practical for typical workflows.
+
+```r
+# This code runs first:
+x <- 1:10
+y <- x * 2
+
+# Select this:
+mean(y)  # ✅ Works! Has access to x and y
+```
+
+### 3. **Smart Context** (Minimum Dependencies / Intelligent)
+```json
+"rHiddenPreview.contextMode": "smartContext"
+```
+**Advanced**: Static analysis identifies *only the minimal upstream variables* your selection depends on. Ignores unrelated code.
+
+```r
+# Unrelated setup:
+a <- 100
+b <- 200
+write_output <- function(x) { ... }  # Side effects
+
+# Relevant setup:
+x <- 1:10
+y <- x * 2
+
+# Select this:
+mean(y)
+
+# Smart context executes: x <- 1:10, y <- x * 2, then selection
+# (skips a, b, write_output function)
+```
+
+**How it works:**
+- **Static Analysis**: Parses your R code and builds a dependency graph
+- **Runtime Validation**: Executes minimal code; if it fails (missing variable), falls back to wider context automatically
+- **Incremental Execution**: Caches previous blocks by hash; reuses unchanged blocks; only re-runs modified code
+- **Safety First**: Only auto-executes code passing safety rules (see Safety section)
+
+---
+
+## 🎨 Display Results
+
+### Inline Results (End-of-Line)
+```
+sum(1:5)  # → [1] 15
+```
+Quick one-line summary visible immediately without opening panels.
+
+### Detail Panel
+Open with: `Ctrl+Shift+P` → `R Instant Preview: Open Preview Panel`
+
+The panel displays:
+- **Text Output** - Full captured stdout
+- **Plots** - Rendered as PNG images
+- **Data Frames** - Scrollable HTML tables with sorting
+- **Errors** - Full error messages for debugging
+- **Variables** - Live `.GlobalEnv` variables with types
+
+---
+
+## 🔒 Safety & Execution Rules
+
+**This extension automatically executes R code.** Read this section carefully.
+
+### What Gets Auto-Executed?
+
+By default, only "safe" code auto-executes:
+
+✅ **Auto-executed (safe by default):**
+```r
 mean(x)
-sum(c(1,2,3))
+plot(y ~ x, data = df)
+subset(df, age > 18)
+sum(1, 2, 3)
 ```
 
-Examples that are skipped:
-
+❌ **Blocked (safe mode prevents auto-execution):**
 ```r
-read.csv("data.csv")
-write.csv(df, "out.csv")
+read.csv("sensitive_file.csv")
+write.csv(df, "output.csv")
 install.packages("ggplot2")
-system("dir")
+system("rm -rf /")  # Never!
+download.file(...)
+setwd("/new/path")
 ```
 
-If an expression is skipped, the extension writes a `SKIP Unsafe expression` entry to the output channel.
+### Configure Safety Rules
 
-## Screenshots
-
-Add screenshots before Marketplace publishing to improve trust and clarity:
-
-- `docs/screenshots/inline-summary.png` (inline end-of-line summary)
-- `docs/screenshots/panel-text-result.png` (detail panel text output)
-- `docs/screenshots/panel-plot-result.png` (detail panel plot image preview)
-
-Suggested capture size:
-- width >= 1280px
-- clear light/dark theme contrast
-- avoid personal paths or sensitive data in editor tabs
-
-## Settings
-
-All settings are under `rHiddenPreview`:
-
-- `rscriptPath` (string, default: `Rscript`)
-  - Path to Rscript executable.
-- `timeoutMs` (number, default: 3000)
-  - Timeout for each preview execution.
-- `debounceMs` (number, default: 350)
-  - Debounce delay before triggering preview.
-- `autoPreview` (boolean, default: true)
-  - Enable automatic preview on selection changes.
-- `enableHoverPreview` (boolean, default: false)
-  - Enable optional hover-based quick preview.
-- `safeAutoExecutionOnly` (boolean, default: true)
-  - If enabled, only auto-run code passing `isSafeExpression(code)`. Disable this to allow auto-preview for all complete selections.
-- `safeFunctionBlacklist` (string[], default: built-in dangerous function list)
-  - Function names blocked by safety rule engine (case-insensitive).
-- `safeFunctionWhitelist` (string[], default: `[]`)
-  - Optional allowed function names. If non-empty, only listed functions are auto-executed.
-- `contextMode` (enum, default: `documentBeforeSelection`)
-  - `selectionOnly`, `documentBeforeSelection`, or `smartContext`.
-- `maxOutputLength` (number, default: 2000)
-  - Maximum output length before truncation.
-- `showInlinePreview` (boolean, default: true)
-  - Show inline end-of-line summary.
-- `showPanelPreview` (boolean, default: true)
-  - Show detailed panel preview.
-- `requireWorkspaceTrust` (boolean, default: true)
-  - Only auto-preview in trusted workspace.
-- `ignoreIncompleteSelection` (boolean, default: true)
-  - Skip incomplete-looking selection instead of showing immediate error.
-
-## Input Completeness Checks (MVP)
-
-Before execution, this MVP checks:
-- empty selection
-- blank selection
-- comment-only selection
-- basic bracket balance
-- obvious unclosed quotes
-- simple incomplete-expression heuristics
-
-Note:
-- This is not a full R parser.
-- Heuristics may occasionally be conservative.
-
-## Result Model
-
-Current result model:
-
-```ts
-type PreviewResult =
-  | { kind: "text"; summary: string; detail?: string; plotPngBase64?: string }
-  | { kind: "error"; summary: string; detail?: string; plotPngBase64?: string };
+```json
+{
+  "rHiddenPreview.safeAutoExecutionOnly": true,  // Default: block unsafe code
+  "rHiddenPreview.safeFunctionBlacklist": [
+    "read.csv", "write.csv", "install.packages", "system"
+  ],
+  "rHiddenPreview.safeFunctionWhitelist": []  // Leave empty to allow all safe code
+}
 ```
 
-Design intent:
-- `summary` is used by inline preview.
-- `detail` is used by preview panel.
-- `plotPngBase64` is used by Webview panel to render plot image previews.
+### Whitelist Mode (Advanced)
 
-## Project Structure
+If you set `safeFunctionWhitelist` to non-empty, *only listed functions* are allowed:
 
-```text
-src/
-  extension.ts
-  types.ts
-  runner/
-    rRunner.ts
-    scriptBuilder.ts
-    resultParser.ts
-  ui/
-    decorations.ts
-    previewPanel.ts
-  util/
-    config.ts
-    debounce.ts
-    rscriptResolver.ts
-    selectionGuard.ts
-    tempFiles.ts
-package.json
-tsconfig.json
-README.md
+```json
+{
+  "rHiddenPreview.safeFunctionWhitelist": ["mean", "sd", "plot", "summary"]
+}
+```
+Now only code using `mean()`, `sd()`, etc. auto-executes. Everything else is blocked.
+
+### Side Effects Warning
+
+- **Selected code executes automatically** when you change selection
+- **In documentBeforeSelection mode**, code before your selection also runs
+- **Any code may have side effects**: file writes, network calls, console output, graphics output, state mutation
+- **Recommend**: Use trusted workspaces; start with `selectionOnly` mode if unsure
+
+### Best Practices
+
+1. ✅ **Use Trusted Workspaces Only** – Mark your project as trusted in VS Code
+2. ✅ **Start with selectionOnly** – Then upgrade to wider modes as needed
+3. ✅ **Review Blacklist** – Verify default blocked functions match your needs
+4. ✅ **Keep Sessions Clean** – Save state (environment) between sessions to avoid surprises
+5. ✅ **Monitor Output** – Watch the R Hidden Preview output channel for execution logs
+
+---
+
+## ⚙️ Configuration
+
+### Core Settings
+
+```json
+{
+  // Path to Rscript executable (auto-detected if in PATH)
+  "rHiddenPreview.rscriptPath": "Rscript",
+
+  // Execution timeout (ms)
+  "rHiddenPreview.timeoutMs": 3000,
+
+  // Debounce delay before executing selection (ms)
+  "rHiddenPreview.debounceMs": 350,
+
+  // Auto-execute on selection change
+  "rHiddenPreview.autoPreview": true,
+
+  // Enable hover-based quick preview
+  "rHiddenPreview.enableHoverPreview": false,
+
+  // Execution context mode: "selectionOnly", "documentBeforeSelection", "smartContext"
+  "rHiddenPreview.contextMode": "documentBeforeSelection",
+
+  // Only auto-execute code passing safety rules
+  "rHiddenPreview.safeAutoExecutionOnly": true,
+
+  // Max output length before truncation (chars)
+  "rHiddenPreview.maxOutputLength": 2000,
+
+  // Show inline end-of-line results
+  "rHiddenPreview.showInlinePreview": true,
+
+  // Show detail preview panel
+  "rHiddenPreview.showPanelPreview": true,
+
+  // Require workspace trust before auto-execution
+  "rHiddenPreview.requireWorkspaceTrust": true,
+
+  // Ignore incomplete selections (heuristic check)
+  "rHiddenPreview.ignoreIncompleteSelection": true
+}
 ```
 
-## Local Development
+### Safety Settings
 
-1. Install dependencies:
+```json
+{
+  // Custom blocked function list
+  "rHiddenPreview.safeFunctionBlacklist": [
+    "read.csv", "read.table", "write.csv", "install.packages",
+    "system", "system2", "shell", "setwd", "unlink"
+  ],
 
-```bash
-npm install
+  // Whitelist (if non-empty, only these functions auto-execute)
+  "rHiddenPreview.safeFunctionWhitelist": []
+}
 ```
 
-2. Compile:
+---
 
-```bash
-npm run compile
+## 🐛 Troubleshooting
+
+### Rscript Not Found
+
+**Error:** `Rscript executable not found`
+
+**Solutions:**
+1. Check R is installed: `R --version`
+2. Add `Rscript` to PATH (see OS docs)
+3. Or set full path in settings:
+   ```json
+   {
+     "rHiddenPreview.rscriptPath": "C:\\Program Files\\R\\R-4.4.1\\bin\\Rscript.exe"
+   }
+   ```
+
+### No Output Appears
+
+**Checklist:**
+- ✅ `enableAutoPreview` is `true`
+- ✅ `showInlinePreview` or `showPanelPreview` is `true`
+- ✅ Workspace is trusted (if `requireWorkspaceTrust` is `true`)
+- ✅ R code is complete (not inside unclosed brackets/quotes)
+
+### Timeout / Slow Performance
+
+**Solutions:**
+- Increase `timeoutMs`: `"rHiddenPreview.timeoutMs": 5000`
+- Use `smartContext` mode to reduce execution scope
+- Use `selectionOnly` for faster feedback on unrelated code
+- Check R session for hanging operations
+
+### Variable Not Found
+
+**Error:** `object 'x' not found`
+
+This means your selection depends on variables not in the current execution context:
+
+- **Switch to documentBeforeSelection** mode (default is safer)
+- Or manually include the variable definitions in your selection
+- Or use smartContext mode (auto-finds dependencies)
+
+---
+
+## 📚 API & Extensions
+
+### Custom Commands
+
+#### R Instant Preview: Open Preview Panel
+```json
+{
+  "key": "ctrl+alt+p",
+  "command": "rHiddenPreview.openPreviewPanel"
+}
 ```
 
-3. Press `F5` in VS Code to launch Extension Development Host.
-
-4. In the host window, open an `.R` file and select R code to test behavior.
-
-## Packaging and Publishing
-
-1. Install VS Code extension packaging tool:
-
-```bash
-npm install -g @vscode/vsce
+#### R Instant Preview: Toggle Auto-Preview
+```json
+{
+  "key": "ctrl+shift+,",
+  "command": "rHiddenPreview.toggleAutoPreview"
+}
 ```
 
-2. Package extension:
-
-```bash
-vsce package
+#### R Instant Preview: Execute Selection
+Manually trigger execution (ignores debounce):
+```json
+{
+  "key": "enter",  // or any key binding
+  "command": "rHiddenPreview.executeSelection"
+}
 ```
 
-3. Publish to Marketplace (after setting publisher metadata and PAT):
+---
 
-```bash
-vsce publish
+## 🎥 Screenshots
+
+To help new users, add screenshots to your workspace:
+
+**Recommended images:**
+- `docs/screenshots/inline-result.png` – Inline summary at end of line
+- `docs/screenshots/panel-text.png` – Detail panel with text output
+- `docs/screenshots/panel-plot.png` – Detail panel with plot image
+- `docs/screenshots/panel-table.png` – Data frame rendered as table
+
+Make sure images show clear before/after (code selection + result).
+
+---
+
+## 🔨 Advanced Features
+
+### Real-Time Variable List
+The extension maintains `.GlobalEnv` variable view (planned).
+
+Display shows:
+- Variable name
+- Type (numeric, character, data.frame, etc.)
+- Approximate size
+- Quick preview (first 100 chars)
+
+### Missing Package Assistant
+When code fails with "package not found":
+1. Extension detects error message
+2. Prompts to install package
+3. Runs `install.packages(...)` automatically
+4. Retries original code
+
+### Incremental Execution (smartContext)
+When using smartContext mode:
+- Code split into logical blocks
+- Each block hashed for content fingerprinting
+- Dependency graph built (which blocks depend on which)
+- Only changed/affected blocks re-execute (unchanged blocks reused from session)
+
+**Example:**
+```r
+# Block 1 (unchanged): ~10ms to compute
+x <- 1:1000000
+y <- x^2
+
+# Block 2 (unchanged, loads from cache): instant
+z <- y + 100
+
+# Block 3 (changed): re-executes
+mean(z)  # ← Only this block runs, not blocks 1-2
 ```
 
-Before publishing:
-- set proper icon, repository, and changelog as needed
-- test on Windows/macOS/Linux with real R environments
-- add screenshots under `docs/screenshots/` and reference them in README
+---
 
-## Known Limitations (MVP)
+## 📖 How It Works (Technical Overview)
 
-- No persistent R session yet (each preview runs isolated process).
-- No table/grid renderer yet for data frames.
-- No cache/reuse for repeated selections.
-- Completeness check is heuristic, not a full parser.
+1. **Selection Listener** – Detects when user changes code selection
+2. **Completeness Check** – Validates selection is complete (brackets balanced, quotes closed)
+3. **Context Builder** – Generates execution code based on context mode:
+   - `selectionOnly`: runs selection only
+   - `documentBeforeSelection`: prepends code before selection
+   - `smartContext`: analyzes dependency graph, includes minimal upstream code
+4. **Safety Filter** – Checks if code passes safety rules; skips if blocked
+5. **Process Execution** – Spawns `Rscript --vanilla` with execution code
+6. **Result Parsing** – Extracts stdout, plots, errors
+7. **UI Update** – Displays inline summary + updates detail panel
+8. **State Management** – Updates `.GlobalEnv` variable list, caches results
 
-## Future Extensions
+---
 
-Planned extension points are already prepared in architecture:
-- data.frame/tibble rich table rendering
-- long-lived R session mode
-- language server or hybrid architecture
-- cross-file context execution strategy
-- result cache and deduplication
+## 🚀 Performance Notes
 
-## Missing Package Install Prompt
+- **Debounce** (default 350ms) prevents excessive execution while you're adjusting selection
+- **Long-Lived Session** (enabled in smartContext) reuses R state across multiple selections
+- **Incremental Execution** (smartContext mode) only re-runs changed code blocks
+- **Result Cache** prevents duplicate execution for identical selections
+- **Execution De-duplication** skips redundant requests during drag-selection
 
-When execution fails because a package is missing, the extension will:
-- detect common missing-package error messages
-- prompt you to install detected package(s)
-- run `install.packages(...)` through `Rscript --vanilla -e`
+---
 
-Notes:
-- package installation requires network access and write permission to your R library paths
-- installation logs are printed to `R Hidden Preview` output channel
+## 🐞 Known Limitations
 
-## Troubleshooting
+- Full R parser not implemented; completeness check is heuristic
+- Plot rendering supports PNG only (not SVG or interactive plots)
+- Data frames render as HTML tables (no interactive editing)
+- Session memory is per-workspace (not persistent across VS Code restarts)
 
-### Rscript not found
+---
 
-- The extension first tries configured rHiddenPreview.rscriptPath.
-- On Windows, if value is default Rscript and PATH lookup fails, it will auto-scan common install locations under Program Files.
-- If still not found, set full executable path manually in rHiddenPreview.rscriptPath.
-- Example on Windows:
-  - `C:\Program Files\R\R-4.4.1\bin\Rscript.exe`
+## 🔮 Roadmap
 
-### Frequent timeout
+Planned features:
+- ✨ Full persistent session across VS Code sessions (save/load environment)
+- ✨ Interactive Shiny app previews
+- ✨ Markdown notebook export (R code + results)
+- ✨ Collaborative debugging with Plumber API integration
 
-- Increase `rHiddenPreview.timeoutMs`.
-- Reduce selected code scope.
+---
 
-### No output shown
-
-- Check `showInlinePreview` and `showPanelPreview` settings.
-- Ensure `autoPreview` is enabled.
-- If workspace is untrusted and `requireWorkspaceTrust` is true, preview is blocked.
-
-## License
+## 📝 License
 
 MIT
+
+## 🤝 Contributing
+
+Issues, feature requests, and PRs welcome on GitHub!
+
+**Report bugs:** [GitHub Issues](https://github.com/linxiangsun145/r-hidden-preview)  
+**Contribute code:** [GitHub PRs](https://github.com/linxiangsun145/r-hidden-preview)
+
+---
+
+**Enjoy interactive R development! 🎉**

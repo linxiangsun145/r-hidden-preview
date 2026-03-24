@@ -1,14 +1,32 @@
-# R Hidden Preview
+# R Instant Preview
 
-R Hidden Preview is a VS Code extension MVP that automatically runs selected R code in a hidden background process and shows immediate preview results.
+**Instantly execute and preview selected R code with one selection!**
 
-When you select code in an `.R` file, the extension can:
-- execute in background with `Rscript --vanilla`
-- show a one-line inline summary at end-of-line
-- show detailed result in a dedicated preview panel
-- render plot output image in preview panel when plotting occurs
+R Instant Preview is a powerful VS Code extension that automatically runs selected R code and shows immediate preview results inline and in a dedicated panel. No clicking "Run" button—just select code and see results instantly.
 
-This project is designed as a stable, maintainable first version suitable for Marketplace publishing and future iteration.
+## What Does It Do?
+
+When you select code in an `.R` file, the extension will:
+
+- ✨ Execute in background instantly with `Rscript --vanilla`
+- 📍 Show a one-line inline summary at the end of your line
+- 📊 Display detailed results in a dedicated preview panel
+- 🎨 Render plots as PNG images when code creates visualizations
+- 🧠 Intelligently track variable dependencies with smart context (optional)
+- ♻️ Cache results to avoid re-running identical expressions
+
+Perfect for interactive R development, data exploration, and teaching!
+
+## Requirements
+
+- **VS Code** 1.80.0 or newer
+- **R** 3.5.0 or newer (installed on your machine)
+- **Rscript** available in PATH (check: `which Rscript` or `where Rscript`)
+
+If `Rscript` is not in PATH, configure the full path:
+```json
+"rHiddenPreview.rscriptPath": "/usr/local/bin/Rscript"  // macOS example
+```
 
 ## Core Features
 
@@ -127,20 +145,33 @@ Recommended practices:
 - Keep `requireWorkspaceTrust` enabled for safer default behavior.
 - Use `selectionOnly` for stricter execution boundaries.
 
+## How to Use
+
+1. **Open an R file** (`.R` extension)
+2. **Select the code** you want to preview with your mouse or keyboard
+3. **Wait 350ms** for the debounce (or press Enter to execute immediately)
+4. **See inline result** at the end of your selected line
+5. **Open details panel** with command: `R Instant Preview: Open Preview Panel`
+
+### Example
+
+```r
+# Select these lines one by one and see results instantly:
+x <- c(1, 2, 3, 4, 5)
+mean(x)           # Result: [1] 3
+sd(x)             # Result: [1] 1.581139
+plot(x)           # Shows plot in panel
+```
+
+## Quick Start Checklist
+
+Before using, ensure:
+
+- ✅ R is installed (`R --version` in terminal)
+- ✅ `Rscript` is in PATH (or configure full path in settings)
+- ✅ Workspace is trusted (required by default)
+
 ## Requirements
-
-- VS Code 1.90.0 or newer
-- R installed on your machine
-- `Rscript` available in PATH or configured with full path in `rHiddenPreview.rscriptPath`
-
-## Usage
-
-1. Open an `.R` file.
-2. Select code with mouse or keyboard.
-3. Wait for debounce delay (default 350ms).
-4. See inline summary at selected line end.
-5. Open detailed panel via command:
-   - `R Hidden Preview: Open Preview Panel`
 
 ## Safe Auto-Execution Rules
 

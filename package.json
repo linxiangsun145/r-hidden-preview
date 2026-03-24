@@ -1,9 +1,10 @@
 {
-  "name": "r-hidden-preview",
-  "displayName": "R Hidden Preview",
-  "description": "Automatically run selected R code in the background and preview results inline and in a panel.",
+  "name": "r-instant-preview",
+  "displayName": "R Instant Preview",
+  "description": "Instantly preview selected R code results inline and in a dedicated panel with smart context analysis.",
   "version": "0.1.0",
   "publisher": "linxiangsun145",
+  "icon": "images/icon.png",
   "license": "MIT",
   "repository": {
     "type": "git",
